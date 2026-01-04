@@ -9,30 +9,24 @@ import {
   Clock,
   CheckCircle,
   MapPin,
-  Phone,
   IndianRupee,
   Calendar,
   Smartphone,
   TrendingUp,
   Users,
-  AlertCircle,
   Eye,
 } from "lucide-react";
 
 interface Order {
   id: string;
-  phone: {
-    name: string;
-    variant: string;
-    condition: string;
-    price: number;
-  };
+  phone_model: string;
+  phone_variant: string;
+  phone_condition: string;
+  price: number;
   status: "pending" | "in-progress" | "completed";
-  createdAt: string;
-  customerName: string;
-  address: string;
-  pickupDate: string;
-  paymentMethod: string;
+  pickup_date: string;
+  customer_name: string;
+  full_address: string;
 }
 
 export default function AgentDashboard() {
@@ -43,15 +37,36 @@ export default function AgentDashboard() {
     "all" | "pending" | "in-progress" | "completed"
   >("all");
 
+  /* ======================
+     FETCH NEARBY ORDERS
+  ====================== */
   useEffect(() => {
     if (!isLoggedIn || user?.role !== "agent") {
       navigate("/agent/login");
       return;
     }
 
-    // Load orders from localStorage
-    const savedOrders = JSON.parse(localStorage.getItem("agentOrders") || "[]");
-    setOrders(savedOrders);
+    const fetchOrders = async () => {
+      try {
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL}/agent/nearby-orders`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+
+        const data = await res.json();
+        if (data.success) {
+          setOrders(data.orders);
+        }
+      } catch (err) {
+        console.error("Failed to load orders", err);
+      }
+    };
+
+    fetchOrders();
   }, [isLoggedIn, user, navigate]);
 
   const filteredOrders = orders.filter((order) =>
@@ -64,18 +79,37 @@ export default function AgentDashboard() {
     completed: orders.filter((o) => o.status === "completed").length,
     earnings: orders
       .filter((o) => o.status === "completed")
-      .reduce((sum, o) => sum + o.phone.price * 0.05, 0),
+      .reduce((sum, o) => sum + o.price * 0.05, 0),
   };
 
-  const updateOrderStatus = (
+  /* ======================
+     UPDATE ORDER STATUS
+  ====================== */
+  const updateOrderStatus = async (
     orderId: string,
     newStatus: "pending" | "in-progress" | "completed"
   ) => {
-    const updatedOrders = orders.map((order) =>
-      order.id === orderId ? { ...order, status: newStatus } : order
-    );
-    setOrders(updatedOrders);
-    localStorage.setItem("agentOrders", JSON.stringify(updatedOrders));
+    try {
+      await fetch(
+        `${import.meta.env.VITE_API_URL}/orders/${orderId}/status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({ status: newStatus }),
+        }
+      );
+
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === orderId ? { ...o, status: newStatus } : o
+        )
+      );
+    } catch (err) {
+      console.error("Failed to update status", err);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -97,7 +131,7 @@ export default function AgentDashboard() {
 
       <main className="flex-grow py-8">
         <div className="container mx-auto px-4">
-          {/* Welcome Section */}
+          {/* Welcome */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900">
               Welcome back,{" "}
@@ -110,193 +144,101 @@ export default function AgentDashboard() {
             </p>
           </div>
 
-          {/* Stats Cards */}
+          {/* Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             {[
-              {
-                label: "Total Orders",
-                value: stats.total,
-                icon: Package,
-                color: "from-blue-500 to-indigo-600",
-                bgColor: "bg-blue-50",
-              },
-              {
-                label: "Pending Pickups",
-                value: stats.pending,
-                icon: Clock,
-                color: "from-yellow-500 to-orange-500",
-                bgColor: "bg-yellow-50",
-              },
-              {
-                label: "Completed",
-                value: stats.completed,
-                icon: CheckCircle,
-                color: "from-green-500 to-emerald-600",
-                bgColor: "bg-green-50",
-              },
+              { label: "Total Orders", value: stats.total, icon: Package },
+              { label: "Pending Pickups", value: stats.pending, icon: Clock },
+              { label: "Completed", value: stats.completed, icon: CheckCircle },
               {
                 label: "Total Earnings",
                 value: `₹${stats.earnings.toLocaleString()}`,
                 icon: IndianRupee,
-                color: "from-purple-500 to-pink-500",
-                bgColor: "bg-purple-50",
               },
             ].map((stat, index) => (
               <div
                 key={index}
-                className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow"
+                className="bg-white rounded-2xl shadow-lg border p-6"
               >
-                <div className="flex items-center justify-between mb-4">
-                  <div
-                    className={`w-12 h-12 ${stat.bgColor} rounded-xl flex items-center justify-center`}
-                  >
-                    <stat.icon
-                      size={24}
-                      className={`text-transparent bg-clip-text bg-gradient-to-r ${stat.color}`}
-                      style={{
-                        color: stat.color.includes("blue")
-                          ? "#3b82f6"
-                          : stat.color.includes("yellow")
-                          ? "#f59e0b"
-                          : stat.color.includes("green")
-                          ? "#10b981"
-                          : "#a855f7",
-                      }}
-                    />
-                  </div>
+                <div className="flex justify-between mb-4">
+                  <stat.icon size={24} />
                   <TrendingUp size={16} className="text-green-500" />
                 </div>
-                <p className="text-sm text-gray-500 font-medium">
-                  {stat.label}
-                </p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {stat.value}
-                </p>
+                <p className="text-sm text-gray-500">{stat.label}</p>
+                <p className="text-2xl font-bold">{stat.value}</p>
               </div>
             ))}
           </div>
 
-          {/* Filter Tabs */}
-          <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-            {[
-              { value: "all", label: "All Orders" },
-              { value: "pending", label: "Pending" },
-              { value: "in-progress", label: "In Progress" },
-              { value: "completed", label: "Completed" },
-            ].map((filter) => (
-              <button
-                key={filter.value}
-                onClick={() => setSelectedFilter(filter.value as any)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
-                  selectedFilter === filter.value
-                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30"
-                    : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
-                }`}
-              >
-                {filter.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Orders List */}
+          {/* Orders */}
           <div className="space-y-4">
             {filteredOrders.length === 0 ? (
-              <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-12 text-center">
-                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Package size={40} className="text-gray-400" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  No orders yet
-                </h3>
+              <div className="bg-white p-12 rounded-2xl text-center shadow">
+                <Package size={40} className="mx-auto text-gray-400 mb-4" />
+                <h3 className="text-xl font-semibold">No nearby orders</h3>
                 <p className="text-gray-500">
-                  New pickup orders will appear here when customers complete
-                  their checkout.
+                  Orders within 20km will appear here.
                 </p>
               </div>
             ) : (
               filteredOrders.map((order) => (
                 <div
                   key={order.id}
-                  className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow"
+                  className="bg-white p-6 rounded-2xl shadow border"
                 >
-                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                    <div className="flex items-start gap-4">
-                      <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <Smartphone size={28} className="text-gray-600" />
-                      </div>
+                  <div className="flex justify-between items-center">
+                    <div className="flex gap-4">
+                      <Smartphone size={32} />
                       <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-gray-900">
-                            {order.phone.name}
-                          </h3>
-                          <span
-                            className={`px-2 py-0.5 text-xs font-medium rounded-full border ${getStatusColor(
-                              order.status
-                            )}`}
-                          >
-                            {order.status.charAt(0).toUpperCase() +
-                              order.status.slice(1).replace("-", " ")}
-                          </span>
-                        </div>
+                        <h3 className="font-semibold">
+                          {order.phone_model}
+                        </h3>
                         <p className="text-sm text-gray-500">
-                          {order.phone.variant} • {order.phone.condition}
+                          {order.phone_variant} • {order.phone_condition}
                         </p>
-                        <div className="flex flex-wrap gap-3 mt-2 text-sm text-gray-600">
-                          <span className="flex items-center gap-1">
-                            <Users size={14} />
-                            {order.customerName}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <MapPin size={14} />
-                            {order.address}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Calendar size={14} />
-                            {new Date(order.pickupDate).toLocaleDateString()}
-                          </span>
+                        <div className="text-sm mt-2 text-gray-600">
+                          <Users size={14} className="inline mr-1" />
+                          {order.customer_name}
+                          <br />
+                          <MapPin size={14} className="inline mr-1" />
+                          {order.full_address}
+                          <br />
+                          <Calendar size={14} className="inline mr-1" />
+                          {new Date(order.pickup_date).toDateString()}
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <p className="text-sm text-gray-500">Offer Price</p>
-                        <p className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
-                          ₹{order.phone.price.toLocaleString()}
-                        </p>
-                      </div>
+                    <div className="text-right">
+                      <p className="font-bold text-lg">
+                        ₹{order.price.toLocaleString()}
+                      </p>
 
-                      <div className="flex gap-2">
-                        {order.status === "pending" && (
-                          <Button
-                            size="sm"
-                            onClick={() =>
-                              updateOrderStatus(order.id, "in-progress")
-                            }
-                            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                          >
-                            Start Pickup
-                          </Button>
-                        )}
-                        {order.status === "in-progress" && (
-                          <Button
-                            size="sm"
-                            onClick={() =>
-                              updateOrderStatus(order.id, "completed")
-                            }
-                            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
-                          >
-                            Complete
-                          </Button>
-                        )}
+                      {order.status === "pending" && (
                         <Button
                           size="sm"
-                          variant="outline"
-                          className="border-2"
+                          onClick={() =>
+                            updateOrderStatus(order.id, "in-progress")
+                          }
                         >
-                          <Eye size={16} />
+                          Start Pickup
                         </Button>
-                      </div>
+                      )}
+
+                      {order.status === "in-progress" && (
+                        <Button
+                          size="sm"
+                          onClick={() =>
+                            updateOrderStatus(order.id, "completed")
+                          }
+                        >
+                          Complete
+                        </Button>
+                      )}
+
+                      <Button size="sm" variant="outline">
+                        <Eye size={16} />
+                      </Button>
                     </div>
                   </div>
                 </div>

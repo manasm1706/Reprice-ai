@@ -27,7 +27,7 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, signup } = useAuth();
 
   const handleClose = () => {
     setIsOpen(false);
@@ -40,14 +40,26 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      // Use phone as identifier for login, or email if provided
-      const identifier = email || phone;
-      const success = await login(
-        identifier,
-        password,
-        userType,
-        name || identifier.split("@")[0]
-      );
+      let success = false;
+
+      if (authMode === "login") {
+        // Login
+        success = await login(phone, password, userType);
+        if (!success) {
+          setError("Invalid phone number or password. Please try again.");
+        }
+      } else {
+        // Signup
+        if (!name.trim()) {
+          setError("Please enter your name.");
+          setIsLoading(false);
+          return;
+        }
+        success = await signup(name, phone, password, userType, email || undefined);
+        if (!success) {
+          setError("Unable to create account. Phone number may already be registered.");
+        }
+      }
 
       if (success) {
         // Route based on user type
@@ -56,11 +68,10 @@ export default function Login() {
         } else {
           navigate("/sell-phone");
         }
-      } else {
-        setError("Invalid credentials. Please try again.");
       }
-    } catch {
-      setError("An error occurred. Please try again.");
+    } catch (err) {
+      console.error('Auth error:', err);
+      setError("An unexpected error occurred. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -194,7 +205,10 @@ export default function Login() {
                 <div className="flex gap-4 mb-6">
                   <button
                     type="button"
-                    onClick={() => setAuthMode("login")}
+                    onClick={() => {
+                      setAuthMode("login");
+                      setError("");
+                    }}
                     className={`flex-1 pb-2 text-center font-medium transition-all border-b-2 ${
                       authMode === "login"
                         ? "text-blue-600 border-blue-600"
@@ -205,7 +219,10 @@ export default function Login() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setAuthMode("signup")}
+                    onClick={() => {
+                      setAuthMode("signup");
+                      setError("");
+                    }}
                     className={`flex-1 pb-2 text-center font-medium transition-all border-b-2 ${
                       authMode === "signup"
                         ? "text-blue-600 border-blue-600"
@@ -231,7 +248,7 @@ export default function Login() {
                         htmlFor="name"
                         className="text-gray-700 font-medium"
                       >
-                        Full Name
+                        Full Name *
                       </Label>
                       <Input
                         id="name"
@@ -249,7 +266,7 @@ export default function Login() {
                       htmlFor="phone"
                       className="text-gray-700 font-medium"
                     >
-                      Phone Number
+                      Phone Number *
                     </Label>
                     <div className="relative">
                       <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -293,7 +310,7 @@ export default function Login() {
                         htmlFor="password"
                         className="text-gray-700 font-medium"
                       >
-                        Password
+                        Password *
                       </Label>
                       {authMode === "login" && (
                         <Link
