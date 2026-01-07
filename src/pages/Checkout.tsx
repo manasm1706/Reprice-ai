@@ -138,7 +138,9 @@ export default function Checkout() {
       if (!data.success) {
         throw new Error("Order failed");
       }
-
+      if (data.order && data.order.id) {
+        localStorage.setItem('lastOrderId', data.order.id);
+      }
       setStep(3);
       window.scrollTo(0, 0);
     } catch (err) {
@@ -393,7 +395,10 @@ export default function Checkout() {
                           >
                             Preferred Time Slot
                           </Label>
-                          <Select onValueChange={setTimeSlot}>
+                          <Select 
+                            value={timeSlot}           // ✅ Add value prop
+                            onValueChange={setTimeSlot}
+                          >
                             <SelectTrigger
                               id="pickup-time"
                               className="h-11 border-gray-200"
@@ -749,11 +754,19 @@ export default function Checkout() {
                           Back to Home
                         </Button>
                         <Button
-                          variant="outline"
-                          className="flex-1 h-11 border-2"
-                        >
-                          View Order Details
-                        </Button>
+  variant="outline"
+  className="flex-1 h-11 border-2"
+  onClick={() => {
+    const orderId = localStorage.getItem('lastOrderId');
+    if (orderId) {
+      navigate(`/order/${orderId}`);
+    } else {
+      alert('Order ID not found');
+    }
+  }}
+>
+  View Order Details
+</Button>
                       </div>
                     </div>
                   </div>

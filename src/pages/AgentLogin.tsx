@@ -21,6 +21,7 @@ import {
 export default function AgentLogin() {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const [phone, setPhone] = useState("+91");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -32,7 +33,23 @@ export default function AgentLogin() {
     setError("");
     setIsLoading(true);
 
-    const success = await login(email, password, "agent");
+    // Prefer phone for login, fallback to email if phone is empty
+    let identifier = phone || email;
+    if (!identifier) {
+      setError("Please enter your phone number or email.");
+      setIsLoading(false);
+      return;
+    }
+    // If phone is entered, ensure it starts with +91 and is valid
+    if (phone && phone.length > 0) {
+      if (!/^\+91[0-9]{10}$/.test(phone)) {
+        setError("Please enter a valid 10-digit phone number in +91 format.");
+        setIsLoading(false);
+        return;
+      }
+      identifier = phone;
+    }
+    const success = await login(identifier, password, "agent");
 
     if (success) {
       navigate("/agent/dashboard");
@@ -120,8 +137,38 @@ export default function AgentLogin() {
               )}
 
               <div className="space-y-2">
+                <Label htmlFor="phone" className="text-gray-700 font-medium">
+                  Phone Number (+91)
+                </Label>
+                <div className="relative">
+                  <Smartphone
+                    size={18}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  />
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => {
+                      let val = e.target.value;
+                      if (!val.startsWith("+91")) {
+                        val = "+91" + val.replace(/^\+?91?/, "");
+                      }
+                      // Only allow +91 followed by up to 10 digits
+                      val = val.replace(/[^\d+]/g, "").slice(0, 13);
+                      setPhone(val);
+                    }}
+                    placeholder="+911234567890"
+                    className="h-12 pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                    pattern="\+91[0-9]{10}"
+                    maxLength={13}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="email" className="text-gray-700 font-medium">
-                  Email Address
+                  Email Address (optional)
                 </Label>
                 <div className="relative">
                   <Mail
@@ -135,7 +182,6 @@ export default function AgentLogin() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="agent@cashnow.com"
                     className="h-12 pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-                    required
                   />
                 </div>
               </div>

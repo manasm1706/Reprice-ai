@@ -45,6 +45,7 @@ router.get("/nearby-orders", authenticateToken, async (req, res) => {
     sub.price,
     sub.status,
     sub.pickup_date,
+    sub.time_slot, 
 
     sub.customer_name,
     sub.customer_phone,
@@ -65,6 +66,7 @@ router.get("/nearby-orders", authenticateToken, async (req, res) => {
       o.price,
       o.status,
       o.pickup_date,
+      o.time_slot,
 
       c.name AS customer_name,
       c.phone AS customer_phone,
