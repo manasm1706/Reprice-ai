@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useParams, Link, useLocation } from "react-router-dom";
+import { useState } from "react";
+import { useParams, Link } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -135,7 +135,6 @@ const STEPS = [
 
 export default function PhoneDetail() {
   const { phoneId } = useParams<{ phoneId: string }>();
-  const location = useLocation();
   const [currentStep, setCurrentStep] = useState(1);
 
   // Form state
@@ -145,110 +144,11 @@ export default function PhoneDetail() {
   const [deviceTurnsOn, setDeviceTurnsOn] = useState<string>("");
   const [hasOriginalBox, setHasOriginalBox] = useState<string>("");
   const [hasOriginalBill, setHasOriginalBill] = useState<string>("");
-  const [isUnderWarranty, setIsUnderWarranty] = useState<string>("");
-  const [apiPrice, setApiPrice] = useState<number | null>(null);
-  const [apiBasePrice, setApiBasePrice] = useState<number | null>(null);
-  const [apiLogs, setApiLogs] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
 
-  const passedPhone = location.state?.phoneData;
-  let phoneData = phoneId ? PHONE_DATA[phoneId as keyof typeof PHONE_DATA] : null;
-
-  if (!phoneData && passedPhone) {
-    const p = passedPhone;
-    phoneData = {
-      id: p.id,
-      name: p.name,
-      brand: p.brand,
-      image: p.image,
-      releaseYear: 2023,
-      description: `Sell your ${p.name} for the best price.`,
-      basePrice: p.maxPrice,
-      ramOptions: [{ id: "standard", name: "Standard", priceAdjustment: 0 }],
-      storageOptions: [
-        { id: "standard", name: "Standard", priceAdjustment: 0 },
-      ],
-      screenConditions: [
-        {
-          id: "good",
-          name: "Good",
-          description: "No scratches, pristine condition",
-          priceAdjustment: 0,
-        },
-        {
-          id: "minor-scratches",
-          name: "Minor Scratches",
-          description: "Light scratches, barely visible",
-          priceAdjustment: -Math.round(p.maxPrice * 0.1),
-        },
-        {
-          id: "major-scratches",
-          name: "Major Scratches",
-          description: "Visible scratches across screen",
-          priceAdjustment: -Math.round(p.maxPrice * 0.25),
-        },
-        {
-          id: "cracked",
-          name: "Cracked",
-          description: "Screen has cracks but functional",
-          priceAdjustment: -Math.round(p.maxPrice * 0.5),
-        },
-        {
-          id: "shattered",
-          name: "Shattered",
-          description: "Severely damaged screen",
-          priceAdjustment: -Math.round(p.maxPrice * 0.75),
-        },
-      ],
-    };
-  }
-
-  const phone = phoneData || PHONE_DATA["iphone-13-pro"];
-
-  useEffect(() => {
-    if (phone.ramOptions.length === 1 && !selectedRam) {
-      setSelectedRam(phone.ramOptions[0].id);
-    }
-    if (phone.storageOptions.length === 1 && !selectedStorage) {
-      setSelectedStorage(phone.storageOptions[0].id);
-    }
-  }, [phone]);
-
-  useEffect(() => {
-    if (currentStep === 4) {
-      fetchPriceFromBackend();
-    }
-  }, [currentStep]);
-
-  const fetchPriceFromBackend = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("http://localhost:8000/calculate-price", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model_name: phone.name,
-          turns_on: deviceTurnsOn === "yes",
-          screen_condition:
-            phone.screenConditions.find((s) => s.id === selectedScreenCondition)
-              ?.name || "Good",
-          has_box: hasOriginalBox === "yes",
-          has_bill: hasOriginalBill === "yes",
-          is_under_warranty: isUnderWarranty === "yes",
-        }),
-      });
-      const data = await response.json();
-      setApiPrice(data.final_price);
-      setApiBasePrice(data.base_price);
-      setApiLogs(data.logs || []);
-    } catch (error) {
-      console.error("Error fetching price:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const phone =
+    phoneId && PHONE_DATA[phoneId as keyof typeof PHONE_DATA]
+      ? PHONE_DATA[phoneId as keyof typeof PHONE_DATA]
+      : PHONE_DATA["iphone-13-pro"];
 
   // Calculate final price
   const calculatePrice = () => {
@@ -370,8 +270,7 @@ export default function PhoneDetail() {
         selectedScreenCondition !== "" &&
         deviceTurnsOn !== "" &&
         hasOriginalBox !== "" &&
-        hasOriginalBill !== "" &&
-        isUnderWarranty !== ""
+        hasOriginalBill !== ""
       );
     return true;
   };
@@ -477,11 +376,7 @@ export default function PhoneDetail() {
                           {phone.brand} • {phone.releaseYear}
                         </p>
                         <p className="text-sm font-semibold text-blue-600 mt-1">
-                          Base: ₹
-                          {(apiBasePrice !== null
-                            ? apiBasePrice
-                            : phone.basePrice
-                          ).toLocaleString()}
+                          Base: ₹{phone.basePrice.toLocaleString()}
                         </p>
                       </div>
                     </div>
@@ -759,46 +654,6 @@ export default function PhoneDetail() {
                         </div>
                       </RadioGroup>
                     </div>
-
-                    {/* Under Warranty */}
-                    <div>
-                      <h4 className="font-semibold mb-3 text-gray-700">
-                        Is device under warranty?
-                      </h4>
-                      <RadioGroup
-                        value={isUnderWarranty}
-                        onValueChange={setIsUnderWarranty}
-                        className="grid grid-cols-2 gap-3"
-                      >
-                        <div>
-                          <RadioGroupItem
-                            value="yes"
-                            id="warranty-yes"
-                            className="peer sr-only"
-                          />
-                          <Label
-                            htmlFor="warranty-yes"
-                            className="flex items-center justify-center gap-2 border-2 rounded-2xl p-4 cursor-pointer peer-data-[state=checked]:border-green-600 peer-data-[state=checked]:bg-green-50 hover:bg-white/80 bg-white/60 backdrop-blur transition-all"
-                          >
-                            <Check size={18} />
-                            <span className="font-semibold">Yes</span>
-                          </Label>
-                        </div>
-                        <div>
-                          <RadioGroupItem
-                            value="no"
-                            id="warranty-no"
-                            className="peer sr-only"
-                          />
-                          <Label
-                            htmlFor="warranty-no"
-                            className="flex items-center justify-center gap-2 border-2 rounded-2xl p-4 cursor-pointer peer-data-[state=checked]:border-gray-600 peer-data-[state=checked]:bg-gray-50 hover:bg-white/80 bg-white/60 backdrop-blur transition-all"
-                          >
-                            <span className="font-semibold">No</span>
-                          </Label>
-                        </div>
-                      </RadioGroup>
-                    </div>
                   </div>
                 )}
 
@@ -808,19 +663,9 @@ export default function PhoneDetail() {
                     {/* Price Card */}
                     <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl p-8 text-white">
                       <p className="text-sm opacity-90 mb-2">Estimated Value</p>
-                      {isLoading ? (
-                        <p className="text-4xl font-bold mb-4 animate-pulse">
-                          Calculating...
-                        </p>
-                      ) : (
-                        <p className="text-6xl font-bold mb-4">
-                          ₹
-                          {(apiPrice !== null
-                            ? apiPrice
-                            : calculatePrice()
-                          ).toLocaleString()}
-                        </p>
-                      )}
+                      <p className="text-6xl font-bold mb-4">
+                        ₹{calculatePrice().toLocaleString()}
+                      </p>
                       <div className="flex items-center gap-2 text-sm opacity-90">
                         <Check size={16} />
                         <span>Instant payment upon verification</span>
@@ -839,38 +684,21 @@ export default function PhoneDetail() {
                         <div className="flex justify-between text-sm pb-3 border-b">
                           <span className="text-gray-600">Base Price</span>
                           <span className="font-semibold">
-                            ₹
-                            {(apiBasePrice !== null
-                              ? apiBasePrice
-                              : phone.basePrice
-                            ).toLocaleString()}
+                            ₹{phone.basePrice.toLocaleString()}
                           </span>
                         </div>
-                        {apiLogs.length > 0
-                          ? apiLogs.map((log, idx) => (
-                              <div
-                                key={idx}
-                                className="text-sm text-gray-700 pl-4 border-l-2 border-blue-300 py-1"
-                              >
-                                {log}
-                              </div>
-                            ))
-                          : generateAIReasoning().map((reason, idx) => (
-                              <div
-                                key={idx}
-                                className="text-sm text-gray-700 pl-4 border-l-2 border-blue-300 py-1"
-                              >
-                                {reason}
-                              </div>
-                            ))}
+                        {generateAIReasoning().map((reason, idx) => (
+                          <div
+                            key={idx}
+                            className="text-sm text-gray-700 pl-4 border-l-2 border-blue-300 py-1"
+                          >
+                            {reason}
+                          </div>
+                        ))}
                         <div className="pt-3 mt-3 border-t border-gray-200 flex justify-between font-bold">
                           <span>Final Price</span>
                           <span className="text-blue-600">
-                            ₹
-                            {(apiPrice !== null
-                              ? apiPrice
-                              : calculatePrice()
-                            ).toLocaleString()}
+                            ₹{calculatePrice().toLocaleString()}
                           </span>
                         </div>
                       </div>

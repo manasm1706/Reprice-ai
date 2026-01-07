@@ -40,30 +40,33 @@ const getCurrentLocation = (): Promise<{
   latitude: number;
   longitude: number;
 }> => {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     if (!navigator.geolocation) {
-      reject(new Error("Geolocation not supported"));
+      // fallback
+      resolve({ latitude: 19.076, longitude: 72.8777 });
       return;
     }
 
-    const watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        const { latitude, longitude, accuracy } = position.coords;
+    const timeoutId = setTimeout(() => {
+      // fallback if GPS takes too long
+      resolve({ latitude: 19.076, longitude: 72.8777 });
+    }, 8000); // 8 seconds max
 
-        // Accept only accurate readings (<30 meters)
-        if (accuracy <= 30) {
-          navigator.geolocation.clearWatch(watchId);
-          resolve({ latitude, longitude });
-        }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        clearTimeout(timeoutId);
+        resolve({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
       },
-      (error) => {
-        navigator.geolocation.clearWatch(watchId);
-        reject(error);
+      () => {
+        clearTimeout(timeoutId);
+        resolve({ latitude: 19.076, longitude: 72.8777 }); // fallback
       },
       {
         enableHighAccuracy: true,
-        timeout: 30000,
-        maximumAge: 0,
+        timeout: 7000,
       }
     );
   });
@@ -134,7 +137,9 @@ export default function Checkout() {
       if (!data.success) {
         throw new Error("Order failed");
       }
-
+      if (data.order && data.order.id) {
+        localStorage.setItem('lastOrderId', data.order.id);
+      }
       setStep(3);
       window.scrollTo(0, 0);
     } catch (err) {
@@ -389,7 +394,10 @@ export default function Checkout() {
                           >
                             Preferred Time Slot
                           </Label>
-                          <Select onValueChange={setTimeSlot}>
+                          <Select 
+                            value={timeSlot}           // ✅ Add value prop
+                            onValueChange={setTimeSlot}
+                          >
                             <SelectTrigger
                               id="pickup-time"
                               className="h-11 border-gray-200"
@@ -424,7 +432,7 @@ export default function Checkout() {
                         </Button>
                         <div className="text-center">
                           <Link
-                            to="/sell-phone"
+                            to="/login"
                             className="text-sm text-gray-500 hover:text-blue-600 inline-flex items-center transition-colors"
                           >
                             <ArrowLeft size={14} className="mr-1" />
@@ -745,11 +753,19 @@ export default function Checkout() {
                           Back to Home
                         </Button>
                         <Button
-                          variant="outline"
-                          className="flex-1 h-11 border-2"
-                        >
-                          View Order Details
-                        </Button>
+  variant="outline"
+  className="flex-1 h-11 border-2"
+  onClick={() => {
+    const orderId = localStorage.getItem('lastOrderId');
+    if (orderId) {
+      navigate(`/order/${orderId}`);
+    } else {
+      alert('Order ID not found');
+    }
+  }}
+>
+  View Order Details
+</Button>
                       </div>
                     </div>
                   </div>

@@ -1,8 +1,4 @@
 import { useState } from "react";
-
-// API base URL for backend
-const API_URL = "http://127.0.0.1:3001";
-
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -142,46 +138,16 @@ const POPULAR_PHONES = [
 export default function SellPhone() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredPhones, setFilteredPhones] = useState(POPULAR_PHONES);
-  const [isSearching, setIsSearching] = useState(false);
 
-  const handleSearch = async (e: React.FormEvent) => {
-  e.preventDefault();
-
-  if (!searchQuery.trim()) {
-    setFilteredPhones(POPULAR_PHONES);
-    return;
-  }
-
-  setIsSearching(true);
-
-  try {
-    const res = await fetch(
-      `${API_URL}/search-phones?q=${encodeURIComponent(searchQuery)}`
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const filtered = POPULAR_PHONES.filter(
+      (phone) =>
+        phone.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        phone.brand.toLowerCase().includes(searchQuery.toLowerCase())
     );
-
-    if (!res.ok) {
-      throw new Error("Search request failed");
-    }
-
-    const data = await res.json();
-
-    const mapped = data.map((item: any, idx: number) => ({
-      id: item.model.toLowerCase().replace(/[\s\/]+/g, "-") + "-" + idx,
-      name: `${item.brand} ${item.model} ${item.variant || ""}`,
-      brand: item.brand,
-      image: "",
-      maxPrice: item.price,
-    }));
-
-    setFilteredPhones(mapped);
-  } catch (err) {
-    console.error("Search failed", err);
-    setFilteredPhones(POPULAR_PHONES); // graceful fallback
-  } finally {
-    setIsSearching(false);
-  }
-};
-
+    setFilteredPhones(filtered);
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -273,7 +239,6 @@ export default function SellPhone() {
 
                           <Link
                             to={`/sell/${phone.id}`}
-                            state={{ phoneData: phone }}
                             className="flex flex-col h-full"
                           >
                             {/* Product Image: fixed height + robust fallback + object-cover */}

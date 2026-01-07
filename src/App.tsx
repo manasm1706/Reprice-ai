@@ -8,6 +8,11 @@ import SellPhone from "./pages/SellPhone";
 import PhoneDetail from "./pages/PhoneDetail";
 import { lazy, Suspense } from "react";
 import { AuthProvider } from "@/context/AuthContext";
+import OrderDetails from "@/pages/OrderDetails";
+import MyOrders from "@/pages/MyOrders";
+
+
+
 
 // Lazy load less critical pages
 const Login = lazy(() => import("./pages/Login"));
@@ -40,7 +45,7 @@ const App = () => (
             <Routes>
               {/* Main pages */}
               <Route path="/" element={<Index />} />
-              <Route path="/sell-phone" element={<SellPhone />} />
+              <Route path="/sell" element={<SellPhone />} />
               <Route path="/sell/:phoneId" element={<PhoneDetail />} />
 
               {/* Customer routes */}
@@ -48,7 +53,7 @@ const App = () => (
 
               {/* Agent routes */}
               {/* <Route path="/agent/login" element={<AgentLogin />} />
-            <Route path="/agent/register" element={<AgentLogin />} /> */}
+            <Route path="/login" element={<AgentLogin />} /> */}
 
               {/* Lazy loaded pages */}
               <Route path="/login" element={<Login />} />
@@ -59,6 +64,10 @@ const App = () => (
               <Route path="/contact" element={<Contact />} />
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/agent/login" element={<AgentLogin />} />
+              
+              <Route path="/order/:orderId" element={<OrderDetails />} />
+              <Route path="/my-orders" element={<MyOrders />} />
+
               <Route path="/agent/dashboard" element={<AgentDashboard />} />
 
               {/* Catch all */}
